@@ -470,8 +470,8 @@ def best_combination(items: Sequence[MenuItem], budget: int, limit_primary: bool
             is_primary = is_primary_item(item)
             is_rice = is_rice_item(item)
             is_don = is_don_primary(item)
-            for amount in range(budget - item.price, -1, -1):
-                states = list(best_states[amount].items())
+            for amount in range(item.price, budget + 1):
+                states = list(best_states[amount - item.price].items())
                 if not states:
                     continue
                 for (has_primary, has_rice, primary_is_don), combo in states:
@@ -485,7 +485,7 @@ def best_combination(items: Sequence[MenuItem], budget: int, limit_primary: bool
                     new_primary_is_don = primary_is_don
                     if is_primary and not has_primary:
                         new_primary_is_don = is_don
-                    new_total = amount + item.price
+                    new_total = amount
                     new_combo = combo + [item]
                     existing = best_states[new_total].get((new_primary, new_rice, new_primary_is_don))
                     chosen = _choose_better_combo(existing, new_combo)
@@ -519,11 +519,11 @@ def best_combination(items: Sequence[MenuItem], budget: int, limit_primary: bool
     best[0] = []
 
     for item in items:
-        for amount in range(budget - item.price, -1, -1):
-            combo = best[amount]
+        for amount in range(item.price, budget + 1):
+            combo = best[amount - item.price]
             if combo is None:
                 continue
-            new_total = amount + item.price
+            new_total = amount
             new_combo = combo + [item]
             existing = best[new_total]
             chosen = _choose_better_combo(existing, new_combo)
