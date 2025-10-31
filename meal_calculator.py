@@ -1,9 +1,4 @@
-"""Command line tool to find menu combinations close to a target budget.
-
-The script scrapes the menu from the provided URL and determines the
-combination of dishes whose total cost is the closest possible to, but
-not exceeding, the requested budget.
-"""
+"""指定された予算内で最適なメニュー組み合わせを求めるユーティリティ。"""
 from __future__ import annotations
 
 import argparse
@@ -22,27 +17,14 @@ MENU_URL = "https://west2-univ.jp/sp/menu.php?t=650111"
 
 @dataclasses.dataclass(frozen=True)
 class MenuItem:
+    """メニュー名と価格を保持するデータクラス。"""
+
     name: str
     price: int
 
 
 class MenuHTMLParser(HTMLParser):
-    """Extract menu items from the HTML document.
-
-    The parser looks for list items that contain both a title and price.
-    The university cafeteria pages typically render each item in the
-    following structure (line breaks and whitespace omitted)::
-
-        <li>
-            <div class="menu_name">Name</div>
-            <div class="menu_price">500円</div>
-        </li>
-
-    The implementation is intentionally defensive so that it can tolerate
-    small markup changes. If the current element provides a data-price
-    attribute, we prioritise that value. Otherwise, we attempt to extract
-    the price from the textual content by using a regular expression.
-    """
+    """学食メニューのHTMLから項目を抽出するパーサー。"""
 
     _price_pattern = re.compile(r"(\d+)")
 
@@ -59,7 +41,7 @@ class MenuHTMLParser(HTMLParser):
         self._stack.append(tag)
 
         if tag == "li":
-            # Reset per item state when a new <li> starts.
+            # 新しい<li>タグ開始時に一時情報を初期化
             self._current_name = None
             self._current_price = None
         elif tag == "div":
@@ -73,10 +55,10 @@ class MenuHTMLParser(HTMLParser):
             elif "menu" in cls and "name" in cls:
                 self._capture_text = "name"
         elif tag in {"span", "p"} and self._capture_text is not None:
-            # Many variants use nested spans, therefore we keep capturing.
+            # 入れ子のタグでもテキストを継続して取得
             pass
 
-        # Direct price encoded in data attributes.
+        # data-price属性に価格があればそれを優先的に利用
         if attrs_dict.get("data-price"):
             try:
                 self._current_price = int(attrs_dict["data-price"])
@@ -123,38 +105,35 @@ class MenuHTMLParser(HTMLParser):
         self.handle_data(char)
 
     def get_items(self) -> List[MenuItem]:
+        """抽出したメニュー項目一覧を返す。"""
+
         return list(self._items)
 
 
 def fetch_menu(url: str = MENU_URL) -> List[MenuItem]:
-    """Download and parse the menu from the remote page."""
+    """指定URLからメニューを取得し、`MenuItem`のリストを返す。"""
 
     try:
         with urllib.request.urlopen(url) as response:
             html_content = response.read().decode(response.headers.get_content_charset() or "utf-8")
-    except urllib.error.URLError as exc:  # pragma: no cover - network failures handled at runtime
-        raise SystemExit(f"Failed to download menu: {exc}") from exc
+    except urllib.error.URLError as exc:  # pragma: no cover - ネットワーク失敗は実行時に処理
+        raise SystemExit(f"メニューのダウンロードに失敗しました: {exc}") from exc
 
     parser = MenuHTMLParser()
     parser.feed(html_content)
     items = parser.get_items()
     if not items:
-        raise SystemExit("No menu items found. The page format might have changed.")
+        raise SystemExit("メニューが見つかりません。ページ構造が変更された可能性があります。")
     return items
 
 
 def best_combination(items: Sequence[MenuItem], budget: int) -> Tuple[int, List[MenuItem]]:
-    """Return the highest total not exceeding the budget and the corresponding items.
-
-    Dynamic programming is used to compute, for every achievable total cost,
-    the combination of dishes that realises it. Among combinations that
-    yield the same total we prefer the one with fewer items to keep the
-    output concise.
-    """
+    """予算内で最大の合計金額となるメニュー組み合わせを探索する。"""
 
     if budget < 0:
-        raise ValueError("budget must be a non-negative integer")
+        raise ValueError("budgetは0以上の整数である必要があります")
 
+    # 各金額に対し最良の組み合わせを記録
     best: List[Optional[List[MenuItem]]] = [None] * (budget + 1)
     best[0] = []
 
@@ -178,29 +157,35 @@ def best_combination(items: Sequence[MenuItem], budget: int) -> Tuple[int, List[
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Find the best menu combination for the given budget.")
-    parser.add_argument("budget", type=int, help="Maximum total amount (in yen)")
+    """コマンドライン引数を解析する。"""
+
+    parser = argparse.ArgumentParser(description="指定予算で最適なメニュー組み合わせを検索します。")
+    parser.add_argument("budget", type=int, help="最大予算（円）")
     parser.add_argument(
         "--url",
         default=MENU_URL,
-        help="Custom menu page URL. Defaults to the specified cafeteria menu.",
+        help="メニューを取得するURL。デフォルトは指定の学食メニューです。",
     )
     parser.add_argument(
         "--json",
         action="store_true",
-        help="Output the result as JSON instead of a human-readable summary.",
+        help="結果をJSON形式で出力します。",
     )
     return parser.parse_args(argv)
 
 
 def format_result(total: int, items: Sequence[MenuItem]) -> str:
-    lines = [f"Best total: {total}円 ({len(items)} item{'s' if len(items) != 1 else ''})"]
+    """組み合わせ結果を人間が読みやすい形式に整形する。"""
+
+    lines = [f"最適合計: {total}円 (品数: {len(items)})"]
     for item in items:
         lines.append(f"- {item.name}: {item.price}円")
     return "\n".join(lines)
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    """コマンドラインツールのエントリポイント。"""
+
     args = parse_args(argv)
     items = fetch_menu(args.url)
     total, combo = best_combination(items, args.budget)
