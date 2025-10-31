@@ -23,7 +23,7 @@ DEFAULT_CATEGORY_LABELS = {
     "on_bunrui1": "朝食プレート",
     "on_bunrui3": "ライス",
 }
-PRIMARY_LIMIT_CATEGORIES = {"主菜", "麺類", "丼・カレー"}
+PRIMARY_LIMIT_CATEGORIES = {"主菜", "麺類", "丼・カレー", "オーダー", "ケバブ&ベジタリアン"}
 CATEGORY_KEYWORD_RULES: list[tuple[str, str]] = [
     ("ライス", "ライス"),
     ("ご飯", "ライス"),
@@ -556,7 +556,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     parser.add_argument(
         "--limit-primary",
         action="store_true",
-        help="主菜・麺類・丼・カレーカテゴリからは1品のみ選択します。",
+        help="主菜・麺類・丼・カレー・オーダー・ケバブ&ベジタリアンカテゴリからは1品のみ選択します。",
     )
     parser.add_argument(
         "--no-playwright",

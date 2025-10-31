@@ -318,7 +318,7 @@
       <section class="panel server-fallback">
         <h2>サーバー描画結果</h2>
         <pre class="fallback-text">{{ result }}</pre>
-        <p class="meta-line">合計: {{ total }}円{% if limit_primary_checked %} / 主菜・麺類・丼・カレーは最大1品{% endif %}</p>
+        <p class="meta-line">合計: {{ total }}円{% if limit_primary_checked %} / 主菜・麺類・丼・カレー・オーダー・ケバブ&ベジタリアンは最大1品{% endif %}</p>
         <ul>
           {% for item in items %}
             <li>{% if item.category %}{{ item.category }} / {% endif %}{{ item.name }} - {{ item.price }}円</li>
@@ -426,7 +426,7 @@
           )
           .join("");
         resultTotal.textContent = `合計 ${data.total.toLocaleString()}円`;
-        const limitNote = data.limit_primary ? " | 主菜・麺類・丼・カレー: 最大1品" : "";
+        const limitNote = data.limit_primary ? " | 主菜・麺類・丼・カレー・オーダー・ケバブ&ベジタリアン: 最大1品" : "";
         resultBudget.textContent = `予算 ${data.budget.toLocaleString()}円 | メニュー数 ${data.items.length}品${limitNote}`;
         resultPanel.classList.remove("hidden");
       };

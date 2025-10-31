@@ -23,7 +23,7 @@ class BudgetForm(forms.Form):
         widget=forms.RadioSelect,
     )
     limit_primary = forms.BooleanField(
-        label="主菜・麺類・丼・カレーからは1品まで",
+        label="主菜・麺類・丼・カレー・オーダー・ケバブ&ベジタリアンからは1品まで",
         required=False,
         help_text="これらのカテゴリから同時に複数選びません。",
     )
