@@ -118,7 +118,7 @@ def is_primary_item(item: MenuItem) -> bool:
     normalized = item.name.strip()
     if any(keyword in normalized for keyword in SIDE_DISH_KEYWORDS):
         return False
-    return True
+    return False
 
 
 def is_don_primary(item: MenuItem) -> bool:
@@ -156,7 +156,12 @@ class MenuHTMLParser(HTMLParser):
     _price_keywords = {"price", "yen", "amount", "value", "cost", "料金", "価格", "金額", "税込"}
     _entry_keywords = {"item", "entry", "row", "menu", "list", "card", "line", "block"}
 
-    def __init__(self, category: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        category: Optional[str] = None,
+        *,
+        category_labels: Optional[dict[str, Optional[str]]] = None,
+    ) -> None:
         super().__init__()
         self._stack: List[str] = []
         self._capture_stack: List[Optional[str]] = []
@@ -164,7 +169,14 @@ class MenuHTMLParser(HTMLParser):
         self._current_price: Optional[int] = None
         self._items: List[MenuItem] = []
         self._seen_pairs: set[tuple[str, int]] = set()
-        self._category = canonical_category(category)
+        self._base_category = canonical_category(category)
+        self._current_category: Optional[str] = self._base_category
+        self._category_labels: dict[str, Optional[str]] = {
+            key: canonical_category(value) if value else None
+            for key, value in (category_labels or {}).items()
+        }
+        self._pending_category: Optional[str] = None
+        self._category_context_stack: List[Optional[str]] = []
 
     @staticmethod
     def _has_keyword(value: Optional[str], keywords: set[str]) -> bool:
@@ -177,6 +189,8 @@ class MenuHTMLParser(HTMLParser):
         return False
 
     def _detect_role(self, tag: str, attrs: dict[str, Optional[str]]) -> Optional[str]:
+        if tag in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+            return "name"
         if attrs.get("data-price"):
             return "price"
         for key in ("class", "id", "data-role", "data-type", "aria-label", "itemprop"):
@@ -223,7 +237,8 @@ class MenuHTMLParser(HTMLParser):
         pair = (name, self._current_price)
         if pair in self._seen_pairs:
             return
-        self._items.append(MenuItem(name, self._current_price, self._category))
+        category = canonical_category(self._current_category or self._base_category)
+        self._items.append(MenuItem(name, self._current_price, category))
         self._seen_pairs.add(pair)
         self._current_name_parts = []
         self._current_price = None
@@ -232,6 +247,23 @@ class MenuHTMLParser(HTMLParser):
         attrs_dict = dict(attrs)
         self._stack.append(tag)
         self._maybe_start_new_entry(tag, attrs_dict)
+
+        new_category = self._current_category
+        if tag == "p" and attrs_dict.get("class") == "toggleTitle":
+            toggle_id = attrs_dict.get("id")
+            if toggle_id:
+                pending = self._category_labels.get(toggle_id)
+                if pending is None:
+                    pending = toggle_id
+                self._pending_category = pending
+        else:
+            classes = (attrs_dict.get("class") or "").split()
+            if "catMenu" in classes:
+                new_category = self._pending_category if self._pending_category is not None else None
+                self._pending_category = None
+
+        self._category_context_stack.append(self._current_category)
+        self._current_category = new_category
 
         role = self._detect_role(tag, attrs_dict)
         self._capture_stack.append(role)
@@ -248,6 +280,10 @@ class MenuHTMLParser(HTMLParser):
             self._stack.pop()
         if self._capture_stack:
             self._capture_stack.pop()
+        if self._category_context_stack:
+            self._current_category = self._category_context_stack.pop()
+        else:
+            self._current_category = self._base_category
         if tag in {"li", "tr"}:
             self._commit_if_ready()
 
@@ -380,7 +416,7 @@ def _extract_items_from_html(
     raw_labels = {**DEFAULT_CATEGORY_LABELS, **label_parser.labels}
     category_labels = {key: canonical_category(value) for key, value in raw_labels.items()}
 
-    parser = MenuHTMLParser()
+    parser = MenuHTMLParser(category_labels=category_labels)
     parser.feed(html_content)
     aggregated.extend(parser.get_items())
 
@@ -400,7 +436,7 @@ def _extract_items_from_html(
             query = urllib.parse.parse_qs(parsed_url.query)
             category_code = query.get("a", [""])[0]
             category_label = canonical_category(category_labels.get(category_code))
-            sub_parser = MenuHTMLParser(category_label)
+            sub_parser = MenuHTMLParser(category_label, category_labels=category_labels)
             sub_parser.feed(fragment)
             aggregated.extend(sub_parser.get_items())
 
@@ -470,27 +506,43 @@ def best_combination(items: Sequence[MenuItem], budget: int, limit_primary: bool
             is_primary = is_primary_item(item)
             is_rice = is_rice_item(item)
             is_don = is_don_primary(item)
-            for amount in range(item.price, budget + 1):
-                states = list(best_states[amount - item.price].items())
-                if not states:
-                    continue
-                for (has_primary, has_rice, primary_is_don), combo in states:
-                    if is_primary and has_primary:
+
+            if is_primary or is_rice:
+                for amount in range(budget - item.price, -1, -1):
+                    states = list(best_states[amount].items())
+                    if not states:
                         continue
-                    if is_rice:
-                        if has_rice or not has_primary or primary_is_don:
+                    for (has_primary, has_rice, primary_is_don), combo in states:
+                        if is_primary and has_primary:
                             continue
-                    new_primary = has_primary or is_primary
-                    new_rice = has_rice or is_rice
-                    new_primary_is_don = primary_is_don
-                    if is_primary and not has_primary:
-                        new_primary_is_don = is_don
-                    new_total = amount
-                    new_combo = combo + [item]
-                    existing = best_states[new_total].get((new_primary, new_rice, new_primary_is_don))
-                    chosen = _choose_better_combo(existing, new_combo)
-                    if chosen is not existing:
-                        best_states[new_total][(new_primary, new_rice, new_primary_is_don)] = chosen
+                        if is_rice:
+                            if has_rice or not has_primary or primary_is_don:
+                                continue
+                        new_primary = has_primary or is_primary
+                        new_rice = has_rice or is_rice
+                        new_primary_is_don = primary_is_don
+                        if is_primary and not has_primary:
+                            new_primary_is_don = is_don
+                        new_total = amount + item.price
+                        if new_total > budget:
+                            continue
+                        new_combo = combo + [item]
+                        existing = best_states[new_total].get((new_primary, new_rice, new_primary_is_don))
+                        chosen = _choose_better_combo(existing, new_combo)
+                        if chosen is not existing:
+                            best_states[new_total][(new_primary, new_rice, new_primary_is_don)] = chosen
+            else:
+                for new_total in range(item.price, budget + 1):
+                    prev_total = new_total - item.price
+                    states = list(best_states[prev_total].items())
+                    if not states:
+                        continue
+                    for state, combo in states:
+                        new_combo = combo + [item]
+                        existing = best_states[new_total].get(state)
+                        chosen = _choose_better_combo(existing, new_combo)
+                        if chosen is not existing:
+                            best_states[new_total][state] = chosen
 
         for total in range(budget, -1, -1):
             state_map = best_states[total]
@@ -576,6 +628,16 @@ def format_result(total: int, items: Sequence[MenuItem]) -> str:
     return "\n".join(lines)
 
 
+def format_menu_items(items: Sequence[MenuItem]) -> str:
+    """取得したメニュー全件を表示用に整形する。"""
+
+    lines = [f"取得メニュー一覧: {len(items)}件"]
+    for item in items:
+        label = f" ({item.category})" if item.category else ""
+        lines.append(f"- {item.name}{label}: {item.price}円")
+    return "\n".join(lines)
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """コマンドラインツールのエントリポイント。"""
 
@@ -588,6 +650,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         payload = {
             "total": total,
             "items": [dataclasses.asdict(item) for item in combo],
+            "menu_items": [dataclasses.asdict(item) for item in items],
             "budget": args.budget,
             "url": args.url,
             "limit_primary": args.limit_primary,
@@ -595,6 +658,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
+        print(format_menu_items(items))
+        print()
         print(format_result(total, combo))
     return 0
 

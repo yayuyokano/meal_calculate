@@ -4,8 +4,9 @@ from __future__ import annotations
 from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 
+from .cafeterias import cafeteria_name, cafeteria_url
 from .forms import BudgetForm
-from meal_calculator import MENU_URL, best_combination, fetch_menu, format_result
+from meal_calculator import best_combination, fetch_menu, format_result
 
 
 def _expects_json(request: HttpRequest, form: BudgetForm) -> bool:
@@ -33,13 +34,19 @@ def index(request: HttpRequest) -> HttpResponse:
     context: dict[str, object] = {
         "form": form,
         "limit_primary_checked": bool(form["limit_primary"].value()),
+        "selected_cafeteria": None,
     }
+    current_cafeteria = form["cafeteria"].value()
+    if current_cafeteria:
+        context["selected_cafeteria"] = cafeteria_name(current_cafeteria)
 
     if request.method == "POST":
         expects_json = _expects_json(request, form)
         if form.is_valid():
             budget = form.cleaned_data["budget"]
-            url = form.cleaned_data.get("url") or MENU_URL
+            cafeteria_id = form.cleaned_data["cafeteria"]
+            url = cafeteria_url(cafeteria_id)
+            selected_cafeteria = cafeteria_name(cafeteria_id)
             output_format = form.cleaned_data["output_format"]
             limit_primary = form.cleaned_data["limit_primary"]
             use_playwright = True
@@ -54,8 +61,13 @@ def index(request: HttpRequest) -> HttpResponse:
                         status=400,
                         json_dumps_params={"ensure_ascii": False},
                     )
-                context["error"] = str(exc)
-                context["limit_primary_checked"] = limit_primary
+                context.update(
+                    {
+                        "error": str(exc),
+                        "limit_primary_checked": limit_primary,
+                        "selected_cafeteria": selected_cafeteria,
+                    }
+                )
                 return render(request, "calculator/index.html", context)
 
             payload = {
@@ -64,8 +76,14 @@ def index(request: HttpRequest) -> HttpResponse:
                     {"name": item.name, "price": item.price, "category": item.category}
                     for item in combo
                 ],
+                "menu_items": [
+                    {"name": item.name, "price": item.price, "category": item.category}
+                    for item in items
+                ],
                 "budget": budget,
                 "url": url,
+                "cafeteria_id": cafeteria_id,
+                "cafeteria_name": selected_cafeteria,
                 "limit_primary": limit_primary,
                 "use_playwright": use_playwright,
             }
@@ -80,8 +98,10 @@ def index(request: HttpRequest) -> HttpResponse:
                 {
                     "result": format_result(total, combo),
                     "items": combo,
+                    "menu_items": items,
                     "total": total,
                     "limit_primary_checked": limit_primary,
+                    "selected_cafeteria": selected_cafeteria,
                 }
             )
         else:

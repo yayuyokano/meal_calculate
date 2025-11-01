@@ -68,14 +68,15 @@
       color: var(--text);
     }
     .field input[type="number"],
-    .field input[type="url"] {
+    .field select {
       padding: 0.75rem 1rem;
       border-radius: 12px;
       border: 1px solid var(--border);
       font-size: 1rem;
       transition: border 0.2s, box-shadow 0.2s;
     }
-    .field input:focus {
+    .field input:focus,
+    .field select:focus {
       outline: none;
       border-color: var(--accent);
       box-shadow: 0 0 0 3px var(--accent-light);
@@ -159,6 +160,15 @@
       display: grid;
       gap: 1.2rem;
     }
+    .menu-section {
+      display: grid;
+      gap: 0.6rem;
+    }
+    .menu-section h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      color: var(--accent);
+    }
     .result-header {
       display: flex;
       flex-wrap: wrap;
@@ -233,7 +243,7 @@
   <div class="layout">
     <header>
       <h1>メニュー組み合わせ検索</h1>
-      <p>予算内で購入できる最適なメニューの組み合わせを検索します。学食などのメニューURLを指定すると最新データで計算できます。</p>
+      <p>予算内で購入できる最適なメニューの組み合わせを検索します。対象の食堂を選ぶだけで最新メニューを取得できます。</p>
     </header>
 
     <section class="panel">
@@ -254,12 +264,12 @@
             {{ form.budget.errors|striptags }}
           </div>
         </div>
-        <div class="field" data-field="url">
-          {{ form.url.label_tag }}
-          {{ form.url }}
-          <div class="hint{% if form.url.errors %} hidden{% endif %}" data-hint-for="url">{{ form.url.help_text }}</div>
-          <div class="error field-error{% if not form.url.errors %} hidden{% endif %}" data-error-for="url" role="alert">
-            {{ form.url.errors|striptags }}
+        <div class="field" data-field="cafeteria">
+          {{ form.cafeteria.label_tag }}
+          {{ form.cafeteria }}
+          <div class="hint{% if form.cafeteria.errors %} hidden{% endif %}" data-hint-for="cafeteria">{{ form.cafeteria.help_text }}</div>
+          <div class="error field-error{% if not form.cafeteria.errors %} hidden{% endif %}" data-error-for="cafeteria" role="alert">
+            {{ form.cafeteria.errors|striptags }}
           </div>
         </div>
         <div class="field" data-field="output_format">
@@ -312,18 +322,36 @@
         </thead>
         <tbody id="result-items"></tbody>
       </table>
+      <div class="menu-section hidden" id="menu-section">
+        <h3>取得メニュー一覧</h3>
+        <div class="meta-line" id="menu-meta"></div>
+        <table>
+          <thead>
+            <tr><th scope="col">メニュー名</th><th scope="col">価格</th></tr>
+          </thead>
+          <tbody id="menu-items"></tbody>
+        </table>
+      </div>
     </section>
 
     {% if result %}
       <section class="panel server-fallback">
         <h2>サーバー描画結果</h2>
         <pre class="fallback-text">{{ result }}</pre>
-        <p class="meta-line">合計: {{ total }}円{% if limit_primary_checked %} / 主菜・麺類・丼・カレー・オーダー・ケバブ&ベジタリアンは最大1品{% endif %}</p>
+        <p class="meta-line">合計: {{ total }}円{% if limit_primary_checked %} / 主菜・麺類・丼・カレー・オーダー・ケバブ&ベジタリアンは最大1品{% endif %}{% if selected_cafeteria %} / {{ selected_cafeteria }}{% endif %}</p>
         <ul>
           {% for item in items %}
             <li>{% if item.category %}{{ item.category }} / {% endif %}{{ item.name }} - {{ item.price }}円</li>
           {% endfor %}
         </ul>
+        {% if menu_items %}
+          <h3>取得メニュー一覧 ({{ menu_items|length }}件)</h3>
+          <ul>
+            {% for item in menu_items %}
+              <li>{% if item.category %}{{ item.category }} / {% endif %}{{ item.name }} - {{ item.price }}円</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
       </section>
     {% endif %}
   </div>
@@ -338,6 +366,9 @@
       const resultItems = document.getElementById("result-items");
       const resultTotal = document.getElementById("result-total");
       const resultBudget = document.getElementById("result-budget");
+      const menuSection = document.getElementById("menu-section");
+      const menuItems = document.getElementById("menu-items");
+      const menuMeta = document.getElementById("menu-meta");
       const inlineError = document.getElementById("form-error");
       const hintMap = new Map();
       const errorMap = new Map();
@@ -423,11 +454,27 @@
               const displayName = item.category ? `${item.category} / ${item.name}` : item.name;
               return `<tr><td>${displayName}</td><td>${item.price.toLocaleString()}円</td></tr>`;
             }
-          )
+        )
           .join("");
+        const comboCount = data.items.length;
+        const menuCount = Array.isArray(data.menu_items) ? data.menu_items.length : null;
         resultTotal.textContent = `合計 ${data.total.toLocaleString()}円`;
         const limitNote = data.limit_primary ? " | 主菜・麺類・丼・カレー・オーダー・ケバブ&ベジタリアン: 最大1品" : "";
-        resultBudget.textContent = `予算 ${data.budget.toLocaleString()}円 | メニュー数 ${data.items.length}品${limitNote}`;
+        const cafeteriaNote = data.cafeteria_name ? ` | ${data.cafeteria_name}` : "";
+        const menuNote = menuCount !== null ? ` | 取得件数 ${menuCount}件` : "";
+        resultBudget.textContent = `予算 ${data.budget.toLocaleString()}円 | 組み合わせ品数 ${comboCount}品${menuNote}${limitNote}${cafeteriaNote}`;
+        if (Array.isArray(data.menu_items) && menuSection && menuItems && menuMeta) {
+          menuItems.innerHTML = data.menu_items
+            .map((item) => {
+              const displayName = item.category ? `${item.category} / ${item.name}` : item.name;
+              return `<tr><td>${displayName}</td><td>${item.price.toLocaleString()}円</td></tr>`;
+            })
+            .join("");
+          menuMeta.textContent = `取得件数 ${data.menu_items.length}件`;
+          menuSection.classList.remove("hidden");
+        } else if (menuSection) {
+          menuSection.classList.add("hidden");
+        }
         resultPanel.classList.remove("hidden");
       };
 
