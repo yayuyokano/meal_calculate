@@ -1,0 +1,19 @@
+.env
+.env.db
+venv/
+__pycache__/
+*.pyc
+staticfiles/
+
+# AWS Keys (NEVER commit these!)
+*.pem
+*.key
+credentials*.json
+client_secrets.json
+
+# Database
+db.sqlite3
+*.sqlite3
+
+# Logs
+*.log

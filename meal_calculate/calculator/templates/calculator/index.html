@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>メニュー組み合わせ検索</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --accent: #2155cd;
+      --accent-light: rgba(33, 85, 205, 0.12);
+      --text: #1f2933;
+      --muted: #6b7280;
+      --border: #d8dee9;
+      font-family: "Hiragino Kaku Gothic ProN", "Noto Sans JP", meiryo, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, rgba(235,241,255,0.6), rgba(245,247,251,1));
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 2.5rem 1.5rem 3rem;
+    }
+    .hidden { display: none !important; }
+    .layout {
+      width: min(960px, 100%);
+      display: grid;
+      gap: 1.5rem;
+    }
+    header {
+      display: grid;
+      gap: 0.5rem;
+    }
+    header h1 {
+      margin: 0;
+      font-size: clamp(1.8rem, 2vw + 1rem, 2.4rem);
+      font-weight: 700;
+      color: var(--accent);
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .panel {
+      background: var(--panel);
+      border-radius: 18px;
+      padding: 1.75rem;
+      box-shadow: 0 18px 30px -28px rgba(20, 23, 45, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      backdrop-filter: blur(8px);
+    }
+    form {
+      display: grid;
+      gap: 1.25rem;
+    }
+    .field {
+      display: grid;
+      gap: 0.35rem;
+    }
+    .field label {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .field input[type="number"],
+    .field select {
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      font-size: 1rem;
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+    .field input:focus,
+    .field select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .options {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .radio-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s, border 0.2s;
+    }
+    .radio-pill input {
+      margin: 0;
+      accent-color: var(--accent);
+    }
+    .radio-pill.checked {
+      background: var(--accent-light);
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .checkbox-line {
+      display: inline-flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+    }
+    .checkbox-line input[type="checkbox"] {
+      margin-top: 0.2rem;
+      width: 1.1rem;
+      height: 1.1rem;
+      accent-color: var(--accent);
+    }
+    .checkbox-line span {
+      font-weight: 600;
+      color: var(--text);
+    }
+    button[type="submit"] {
+      justify-self: start;
+      padding: 0.9rem 1.8rem;
+      border: none;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 12px 20px -14px rgba(33, 85, 205, 0.9);
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+    button[type="submit"]:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 14px 24px -16px rgba(33, 85, 205, 0.9);
+    }
+    button[type="submit"]:disabled {
+      cursor: wait;
+      opacity: 0.7;
+    }
+    .status {
+      display: none;
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+    .status.active {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .results {
+      display: grid;
+      gap: 1.2rem;
+    }
+    .menu-section {
+      display: grid;
+      gap: 0.6rem;
+    }
+    .menu-section h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      color: var(--accent);
+    }
+    .result-header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: baseline;
+      justify-content: space-between;
+    }
+    .result-header h2 {
+      margin: 0;
+      font-size: 1.35rem;
+    }
+    .meta-line {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+    thead {
+      background: rgba(33, 85, 205, 0.08);
+      color: var(--accent);
+    }
+    th, td {
+      padding: 0.8rem 1rem;
+      text-align: left;
+    }
+    tbody tr:nth-child(odd) {
+      background: rgba(33, 85, 205, 0.02);
+    }
+    .total {
+      font-weight: 700;
+      font-size: 1.05rem;
+      display: flex;
+      justify-content: flex-end;
+    }
+    .error {
+      color: #c62828;
+      background: #fdecea;
+      border: 1px solid #f3b1ab;
+      padding: 0.85rem 1rem;
+      border-radius: 12px;
+    }
+    .field-error {
+      font-size: 0.9rem;
+    }
+    .server-fallback {
+      margin-top: 1rem;
+    }
+    pre.fallback-text {
+      margin: 0;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+      background: rgba(15, 23, 42, 0.03);
+      padding: 1rem;
+      border-radius: 12px;
+      border: 1px dashed var(--border);
+    }
+    @media (max-width: 640px) {
+      body { padding: 1.5rem 1rem 2rem; }
+      .panel { padding: 1.25rem; }
+      button[type="submit"] { width: 100%; justify-content: center; }
+      .result-header { align-items: flex-start; }
+      table { font-size: 0.95rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header>
+      <h1>メニュー組み合わせ検索</h1>
+      <p>予算内で購入できる最適なメニューの組み合わせを検索します。対象の食堂を選ぶだけで最新メニューを取得できます。</p>
+    </header>
+
+    <section class="panel">
+      <div id="form-error" class="error{% if not error and not form.non_field_errors %} hidden{% endif %}" role="alert">
+        {% if error %}
+          {{ error }}
+        {% elif form.non_field_errors %}
+          {{ form.non_field_errors|striptags }}
+        {% endif %}
+      </div>
+      <form method="post" id="budget-form" novalidate>
+        {% csrf_token %}
+        <div class="field" data-field="budget">
+          {{ form.budget.label_tag }}
+          {{ form.budget }}
+          <div class="hint{% if form.budget.errors %} hidden{% endif %}" data-hint-for="budget">{{ form.budget.help_text }}</div>
+          <div class="error field-error{% if not form.budget.errors %} hidden{% endif %}" data-error-for="budget" role="alert">
+            {{ form.budget.errors|striptags }}
+          </div>
+        </div>
+        <div class="field" data-field="cafeteria">
+          {{ form.cafeteria.label_tag }}
+          {{ form.cafeteria }}
+          <div class="hint{% if form.cafeteria.errors %} hidden{% endif %}" data-hint-for="cafeteria">{{ form.cafeteria.help_text }}</div>
+          <div class="error field-error{% if not form.cafeteria.errors %} hidden{% endif %}" data-error-for="cafeteria" role="alert">
+            {{ form.cafeteria.errors|striptags }}
+          </div>
+        </div>
+        <div class="field" data-field="output_format">
+          {{ form.output_format.label_tag }}
+          <div class="options" data-radio-group>
+            {% for radio in form.output_format %}
+              <label class="radio-pill">
+                {{ radio.tag }}
+                <span>{{ radio.choice_label }}</span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="field" data-field="limit_primary">
+          <label class="checkbox-line">
+            {{ form.limit_primary }}
+            <span>{{ form.limit_primary.label }}</span>
+          </label>
+          <div class="hint{% if form.limit_primary.errors %} hidden{% endif %}" data-hint-for="limit_primary">
+            {{ form.limit_primary.help_text }}
+          </div>
+          <div class="error field-error{% if not form.limit_primary.errors %} hidden{% endif %}" data-error-for="limit_primary" role="alert">
+            {{ form.limit_primary.errors|striptags }}
+          </div>
+        </div>
+        <div class="field">
+          <button type="submit">計算する</button>
+          <span class="status" id="status-indicator">
+            <svg width="18" height="18" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="32" stroke="var(--accent)" stroke-width="12" stroke-linecap="round" fill="none" stroke-dasharray="50 140">
+                <animateTransform attributeName="transform" type="rotate" values="0 50 50;360 50 50" dur="1.2s" repeatCount="indefinite" />
+              </circle>
+            </svg>
+            計算中...
+          </span>
+        </div>
+      </form>
+      <p class="meta-line">JavaScriptが無効な場合は、従来どおりページ遷移して結果が表示されます。</p>
+    </section>
+
+    <section class="panel results hidden" id="result-panel">
+      <div class="result-header">
+        <h2>検索結果</h2>
+        <div class="meta-line" id="result-budget"></div>
+      </div>
+      <div class="total" id="result-total"></div>
+      <table aria-live="polite" aria-busy="false">
+        <thead>
+          <tr><th scope="col">メニュー名</th><th scope="col">価格</th></tr>
+        </thead>
+        <tbody id="result-items"></tbody>
+      </table>
+      <div class="menu-section hidden" id="menu-section">
+        <h3>取得メニュー一覧</h3>
+        <div class="meta-line" id="menu-meta"></div>
+        <table>
+          <thead>
+            <tr><th scope="col">メニュー名</th><th scope="col">価格</th></tr>
+          </thead>
+          <tbody id="menu-items"></tbody>
+        </table>
+      </div>
+    </section>
+
+    {% if result %}
+      <section class="panel server-fallback">
+        <h2>サーバー描画結果</h2>
+        <pre class="fallback-text">{{ result }}</pre>
+        <p class="meta-line">合計: {{ total }}円{% if limit_primary_checked %} / 主菜・麺類・丼・カレー・オーダー・ケバブ&ベジタリアンは最大1品{% endif %}{% if selected_cafeteria %} / {{ selected_cafeteria }}{% endif %}</p>
+        <ul>
+          {% for item in items %}
+            <li>{% if item.category %}{{ item.category }} / {% endif %}{{ item.name }} - {{ item.price }}円</li>
+          {% endfor %}
+        </ul>
+        {% if menu_items %}
+          <h3>取得メニュー一覧 ({{ menu_items|length }}件)</h3>
+          <ul>
+            {% for item in menu_items %}
+              <li>{% if item.category %}{{ item.category }} / {% endif %}{{ item.name }} - {{ item.price }}円</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </section>
+    {% endif %}
+  </div>
+
+  <script>
+    (function () {
+      const form = document.getElementById("budget-form");
+      if (!form) return;
+
+      const status = document.getElementById("status-indicator");
+      const resultPanel = document.getElementById("result-panel");
+      const resultItems = document.getElementById("result-items");
+      const resultTotal = document.getElementById("result-total");
+      const resultBudget = document.getElementById("result-budget");
+      const menuSection = document.getElementById("menu-section");
+      const menuItems = document.getElementById("menu-items");
+      const menuMeta = document.getElementById("menu-meta");
+      const inlineError = document.getElementById("form-error");
+      const hintMap = new Map();
+      const errorMap = new Map();
+
+      form.querySelectorAll("[data-hint-for]").forEach((el) => {
+        const key = el.getAttribute("data-hint-for");
+        if (key) hintMap.set(key, el);
+      });
+      form.querySelectorAll("[data-error-for]").forEach((el) => {
+        const key = el.getAttribute("data-error-for");
+        if (key) errorMap.set(key, el);
+      });
+
+      const csrfToken = (() => {
+        const match = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
+        return match ? decodeURIComponent(match[2]) : "";
+      })();
+
+      const toggleStatus = (active) => {
+        if (active) {
+          status.classList.add("active");
+        } else {
+          status.classList.remove("active");
+        }
+      };
+
+      const clearInlineError = () => {
+        if (!inlineError) return;
+        inlineError.textContent = "";
+        if (!inlineError.classList.contains("hidden")) {
+          inlineError.classList.add("hidden");
+        }
+      };
+
+      const showInlineError = (message) => {
+        if (!message) return;
+        if (inlineError) {
+          inlineError.textContent = message;
+          inlineError.classList.remove("hidden");
+        } else {
+          alert(message);
+        }
+      };
+
+      const clearFieldErrors = () => {
+        errorMap.forEach((element) => {
+          element.textContent = "";
+          element.classList.add("hidden");
+        });
+        hintMap.forEach((element) => {
+          element.classList.remove("hidden");
+        });
+      };
+
+      const applyFieldErrors = (errors) => {
+        if (!errors) return;
+        Object.entries(errors).forEach(([field, messages]) => {
+          const text = Array.isArray(messages) ? messages.join(" ") : String(messages || "");
+          if (!text) return;
+          if (field === "__all__") {
+            showInlineError(text);
+            return;
+          }
+          const errorEl = errorMap.get(field);
+          const hintEl = hintMap.get(field);
+          if (hintEl) {
+            hintEl.classList.add("hidden");
+          }
+          if (errorEl) {
+            errorEl.textContent = text;
+            errorEl.classList.remove("hidden");
+          }
+        });
+      };
+
+      const renderResult = (data) => {
+        if (!data || !Array.isArray(data.items)) {
+          throw new Error("結果を正しく取得できませんでした。");
+        }
+        resultItems.innerHTML = data.items
+          .map(
+            (item) => {
+              const displayName = item.category ? `${item.category} / ${item.name}` : item.name;
+              return `<tr><td>${displayName}</td><td>${item.price.toLocaleString()}円</td></tr>`;
+            }
+        )
+          .join("");
+        const comboCount = data.items.length;
+        const menuCount = Array.isArray(data.menu_items) ? data.menu_items.length : null;
+        resultTotal.textContent = `合計 ${data.total.toLocaleString()}円`;
+        const limitNote = data.limit_primary ? " | 主菜・麺類・丼・カレー・オーダー・ケバブ&ベジタリアン: 最大1品" : "";
+        const cafeteriaNote = data.cafeteria_name ? ` | ${data.cafeteria_name}` : "";
+        const menuNote = menuCount !== null ? ` | 取得件数 ${menuCount}件` : "";
+        resultBudget.textContent = `予算 ${data.budget.toLocaleString()}円 | 組み合わせ品数 ${comboCount}品${menuNote}${limitNote}${cafeteriaNote}`;
+        if (Array.isArray(data.menu_items) && menuSection && menuItems && menuMeta) {
+          menuItems.innerHTML = data.menu_items
+            .map((item) => {
+              const displayName = item.category ? `${item.category} / ${item.name}` : item.name;
+              return `<tr><td>${displayName}</td><td>${item.price.toLocaleString()}円</td></tr>`;
+            })
+            .join("");
+          menuMeta.textContent = `取得件数 ${data.menu_items.length}件`;
+          menuSection.classList.remove("hidden");
+        } else if (menuSection) {
+          menuSection.classList.add("hidden");
+        }
+        resultPanel.classList.remove("hidden");
+      };
+
+      const radioLabels = Array.from(form.querySelectorAll(".radio-pill"));
+      const syncRadioStyles = () => {
+        radioLabels.forEach((label) => {
+          const input = label.querySelector("input[type='radio']");
+          if (input && input.checked) {
+            label.classList.add("checked");
+          } else {
+            label.classList.remove("checked");
+          }
+        });
+      };
+      radioLabels.forEach((label) => {
+        const input = label.querySelector("input[type='radio']");
+        if (input) {
+          input.addEventListener("change", syncRadioStyles);
+        }
+      });
+      syncRadioStyles();
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton) submitButton.disabled = true;
+        toggleStatus(true);
+        clearInlineError();
+        clearFieldErrors();
+
+        try {
+          const formData = new FormData(form);
+          formData.set("output_format", "json");
+          const response = await fetch(form.action || ".", {
+            method: "POST",
+            headers: csrfToken ? { "X-CSRFToken": csrfToken } : {},
+            body: formData,
+          });
+
+          const contentType = response.headers.get("content-type") || "";
+          const isJson = contentType.includes("application/json");
+          const data = isJson ? await response.json() : null;
+
+          if (!response.ok) {
+            if (data && data.field_errors) {
+              applyFieldErrors(data.field_errors);
+            }
+            const message = data && data.error ? data.error : `サーバーエラーが発生しました (HTTP ${response.status})`;
+            showInlineError(message);
+            return;
+          }
+
+          if (!data) {
+            showInlineError("JSONレスポンスを取得できませんでした。");
+            return;
+          }
+
+          clearInlineError();
+          clearFieldErrors();
+          renderResult(data);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "不明なエラーが発生しました";
+          showInlineError(message);
+        } finally {
+          toggleStatus(false);
+          if (submitButton) submitButton.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
