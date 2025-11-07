@@ -165,7 +165,25 @@ curl -X POST http://localhost:8000/calculate \
 
 ## デプロイ
 
-### AWS ECS へのデプロイ
+### CI/CD パイプライン
+
+GitHub への `main` ブランチへのプッシュで自動デプロイが実行されます。
+
+```
+GitHub (push) → CodePipeline → CodeBuild → ECR → ECS (自動デプロイ)
+```
+
+**デプロイ手順**:
+1. コードを変更
+2. `git push origin main` でプッシュ
+3. CodePipeline が自動的に起動
+4. 約5-10分でECSに反映
+
+**パイプライン確認**: AWS Console → CodePipeline → `meal-calculate-pipeline`
+
+### 手動デプロイ（非推奨）
+
+CI/CDパイプラインを使用せず手動でデプロイする場合：
 
 #### 1. ECR にイメージをプッシュ
 
