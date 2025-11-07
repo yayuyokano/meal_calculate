@@ -5,7 +5,7 @@
 [![Python](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/Django-5.0-green.svg)](https://www.djangoproject.com/)
 [![AWS ECS](https://img.shields.io/badge/AWS-ECS-orange.svg)](https://aws.amazon.com/ecs/)
-[![CI/CD](https://img.shields.io/badge/CI%2FCD-Active-success.svg)](https://aws.amazon.com/codepipeline/)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-Automated-success.svg)](https://aws.amazon.com/codepipeline/)
 
 ## 目次
 
