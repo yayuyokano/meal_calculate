@@ -1,0 +1,17 @@
+# AWS設定
+aws_region = "us-east-1"
+project_name = "meal-calculate"
+
+# 既存のネットワークリソースID (実際の値に置き換えてください)
+vpc_id             = "vpc-xxxxxxxxxxxxxxxxx"
+subnet_1_id        = "subnet-088653857a61df80c"
+subnet_2_id        = "subnet-0fe35059815c6a745"
+security_group_id  = "sg-0ceb3328cf39b1caa"
+
+# GitHub設定
+github_repo_owner = "yayuyokano"
+github_repo_name  = "meal_calculate"
+
+# 機密情報 - terraform.tfvarsファイルに別途記載 (Gitにコミットしないこと!)
+# github_oauth_token    = "your-github-oauth-token"
+# github_webhook_secret = "your-webhook-secret"
