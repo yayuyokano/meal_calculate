@@ -22,7 +22,11 @@ phases:
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - echo Writing image definitions file...
       - printf '[{"name":"meal-calculate-task","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - echo Writing task definition file...
+      - TASK_DEFINITION_ARN=$(aws ecs describe-task-definition --task-definition meal-calculate-task --region $AWS_DEFAULT_REGION --query 'taskDefinition.taskDefinitionArn' --output text)
+      - aws ecs describe-task-definition --task-definition meal-calculate-task --region $AWS_DEFAULT_REGION --query 'taskDefinition' > taskdef.json
 
 artifacts:
   files:
     - imagedefinitions.json
+    - taskdef.json
