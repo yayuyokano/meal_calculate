@@ -36,6 +36,27 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# CloudWatch Logs policy for automatic log group creation
+resource "aws_iam_role_policy" "ecs_task_execution_cloudwatch_policy" {
+  role = aws_iam_role.ecs_task_execution_role.name
+  name = "CloudWatchLogsPolicy"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
+}
+
 # ECS Task Definition
 resource "aws_ecs_task_definition" "main" {
   family                   = "${var.project_name}-task"

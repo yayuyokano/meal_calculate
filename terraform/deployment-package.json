@@ -1,0 +1,17 @@
+{
+  "version": 0.0,
+  "Resources": [
+    {
+      "TargetService": {
+        "Type": "AWS::ECS::Service",
+        "Properties": {
+          "TaskDefinition": "arn:aws:ecs:us-east-1:245775075134:task-definition/meal-calculate-dev-task:1",
+          "LoadBalancerInfo": {
+            "ContainerName": "meal-calculate-dev-task",
+            "ContainerPort": 8000
+          }
+        }
+      }
+    }
+  ]
+}

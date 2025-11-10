@@ -22,7 +22,14 @@ db.sqlite3
 terraform/.terraform/
 terraform/*.tfstate
 terraform/*.tfstate.*
+terraform/*.tfstate.backup
 terraform/.terraform.lock.hcl
 terraform/terraform.tfvars
+terraform/terraform.*.tfvars
+terraform/backend.tf
+terraform/tfplan
+terraform/plan_output.txt
+terraform/outputs.json
 terraform/crash.log
 terraform/crash.*.log
+terraform/*.disabled

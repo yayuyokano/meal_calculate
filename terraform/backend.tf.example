@@ -1,0 +1,18 @@
+# Terraform Backend Configuration
+# このファイルはterraform initの後に有効化してください
+
+# 使用方法:
+# 1. 最初は backend.tf をコメントアウトまたは削除した状態で terraform init
+# 2. S3バケットとDynamoDBテーブルを作成
+# 3. このファイルのコメントを解除
+# 4. terraform init -migrate-state を実行してローカルステートをS3に移行
+
+terraform {
+  backend "s3" {
+    bucket         = "meal-calculate-terraform-state-245775075134"
+    key            = "meal-calculate/terraform.tfstate"
+    region         = "us-east-1"
+    dynamodb_table = "meal-calculate-terraform-locks"
+    encrypt        = true
+  }
+}

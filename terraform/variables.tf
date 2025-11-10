@@ -52,10 +52,12 @@ variable "github_oauth_token" {
   description = "GitHub OAuth token for CodePipeline"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "github_webhook_secret" {
   description = "GitHub webhook secret"
   type        = string
   sensitive   = true
+  default     = ""
 }

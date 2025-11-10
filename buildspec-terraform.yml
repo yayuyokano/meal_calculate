@@ -1,0 +1,64 @@
+version: 0.2
+
+env:
+  variables:
+    TF_IN_AUTOMATION: "true"
+    TF_INPUT: "false"
+
+phases:
+  install:
+    commands:
+      - echo Installing Terraform...
+      - wget -q https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+      - unzip -q terraform_1.6.6_linux_amd64.zip
+      - mv terraform /usr/local/bin/
+      - terraform version
+  
+  pre_build:
+    commands:
+      - echo Initializing Terraform...
+      - cd terraform
+      - terraform init -input=false
+  
+  build:
+    commands:
+      - echo Validating Terraform configuration...
+      - terraform validate
+      - echo Formatting check...
+      - terraform fmt -check -recursive || echo "Warning: Code not formatted"
+      - echo Planning Terraform changes...
+      - |
+        if [ "$CODEBUILD_BUILD_NUMBER" ]; then
+          # Pipeline実行時: planまたはapply
+          if [ "$TERRAFORM_ACTION" = "apply" ]; then
+            echo "Applying Terraform changes..."
+            terraform apply -auto-approve -input=false
+            terraform output -json > outputs.json
+          else
+            echo "Creating Terraform plan..."
+            terraform plan -var-file=terraform.tfvars -out=tfplan -input=false
+            terraform show -no-color tfplan > plan_output.txt
+          fi
+        else
+          # 手動実行時: planのみ
+          terraform plan -var-file=terraform.tfvars -out=tfplan -input=false
+        fi
+
+artifacts:
+  files:
+    - terraform/tfplan
+    - terraform/plan_output.txt
+    - terraform/outputs.json
+    - terraform/.terraform.lock.hcl
+  name: TerraformArtifacts
+
+cache:
+  paths:
+    - terraform/.terraform/**/*
+    - /root/.terraform.d/plugin-cache/**/*
+
+reports:
+  terraform-plan:
+    files:
+      - terraform/plan_output.txt
+    file-format: PLAIN
