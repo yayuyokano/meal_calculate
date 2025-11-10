@@ -163,33 +163,40 @@ resource "aws_codepipeline" "terraform" {
   }
 }
 
-# Webhook for Terraform Pipeline
-resource "aws_codepipeline_webhook" "terraform" {
-  name            = "${var.project_name}-terraform-webhook"
-  target_pipeline = aws_codepipeline.terraform.name
-  target_action   = "Source"
-  authentication  = "GITHUB_HMAC"
+# Webhook for Terraform Pipeline - DISABLED (Manual execution only)
+# Uncomment to enable automatic triggering on terraform/ changes
+# Note: The filter for terraform/* doesn't work reliably with GitHub webhooks
+# For automatic execution, use GitHub Actions or branch-based strategy instead
+# 
+# resource "aws_codepipeline_webhook" "terraform" {
+#   name            = "${var.project_name}-terraform-webhook"
+#   target_pipeline = aws_codepipeline.terraform.name
+#   target_action   = "Source"
+#   authentication  = "GITHUB_HMAC"
+# 
+#   authentication_configuration {
+#     secret_token = var.github_webhook_secret
+#   }
+# 
+#   filter {
+#     json_path    = "$.ref"
+#     match_equals = "refs/heads/main"
+#   }
+# 
+#   # Only trigger on terraform directory changes - DOES NOT WORK RELIABLY
+#   filter {
+#     json_path    = "$.commits[*].modified[*]"
+#     match_equals = "terraform/*"
+#   }
+# 
+#   tags = {
+#     Name    = "${var.project_name}-terraform-webhook"
+#     Project = var.project_name
+#   }
+# }
 
-  authentication_configuration {
-    secret_token = var.github_webhook_secret
-  }
-
-  filter {
-    json_path    = "$.ref"
-    match_equals = "refs/heads/main"
-  }
-
-  # Only trigger on terraform directory changes
-  filter {
-    json_path    = "$.commits[*].modified[*]"
-    match_equals = "terraform/*"
-  }
-
-  tags = {
-    Name    = "${var.project_name}-terraform-webhook"
-    Project = var.project_name
-  }
-}
+# Manual execution command:
+# aws codepipeline start-pipeline-execution --name meal-calculate-terraform-pipeline --region us-east-1
 
 output "terraform_pipeline_name" {
   description = "Terraform CodePipeline name"

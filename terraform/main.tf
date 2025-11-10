@@ -25,6 +25,7 @@ data "aws_subnet" "subnet_2" {
   id = var.subnet_2_id
 }
 
+
 data "aws_security_group" "app" {
   id = var.security_group_id
 }

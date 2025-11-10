@@ -25,11 +25,6 @@ variable "subnet_2_id" {
   type        = string
 }
 
-variable "security_group_id" {
-  description = "Security Group ID"
-  type        = string
-}
-
 variable "github_repo_owner" {
   description = "GitHub repository owner"
   type        = string
@@ -60,4 +55,9 @@ variable "github_webhook_secret" {
   type        = string
   sensitive   = true
   default     = ""
+}
+
+variable "security_group_id" {
+  description = "Security Group ID"
+  type        = string
 }

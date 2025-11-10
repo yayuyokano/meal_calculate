@@ -33,3 +33,10 @@ terraform/outputs.json
 terraform/crash.log
 terraform/crash.*.log
 terraform/*.disabled
+# Terraform sensitive files
+terraform/terraform.tfvars
+terraform/*.tfvars
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
