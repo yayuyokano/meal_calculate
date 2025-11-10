@@ -1,0 +1,32 @@
+[
+    {
+        "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:245775075134:loadbalancer/app/meal-calculate-alb/49928e4cf4413c90",
+        "DNSName": "meal-calculate-alb-828374727.us-east-1.elb.amazonaws.com",
+        "CanonicalHostedZoneId": "Z35SXDOTRQ7X7K",
+        "CreatedTime": "2025-11-06T15:50:42.126000+00:00",
+        "LoadBalancerName": "meal-calculate-alb",
+        "Scheme": "internet-facing",
+        "VpcId": "vpc-041d60377fe2872c8",
+        "State": {
+            "Code": "active"
+        },
+        "Type": "application",
+        "AvailabilityZones": [
+            {
+                "ZoneName": "us-east-1a",
+                "SubnetId": "subnet-088653857a61df80c",
+                "LoadBalancerAddresses": []
+            },
+            {
+                "ZoneName": "us-east-1b",
+                "SubnetId": "subnet-0fe35059815c6a745",
+                "LoadBalancerAddresses": []
+            }
+        ],
+        "SecurityGroups": [
+            "sg-07fe40e7cad1359ea"
+        ],
+        "IpAddressType": "ipv4",
+        "EnablePrefixForIpv6SourceNat": "off"
+    }
+]
